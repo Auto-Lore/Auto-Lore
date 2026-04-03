@@ -36,4 +36,4 @@ jobs:
       - name: Run tests
         working-directory: Memory-Service
         run: |
-          python -m pytest tests/ -v
+          python -m pytest tests/ -v --cov=. --cov-report=term-missing
