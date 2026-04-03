@@ -28,6 +28,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Lint with flake8
+        working-directory: Memory-Service
+        run: |
+          python -m flake8 . --max-line-length=120 --count --show-source --statistics
+
       - name: Run tests
         working-directory: Memory-Service
         run: |
