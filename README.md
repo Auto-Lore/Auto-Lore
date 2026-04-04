@@ -16,6 +16,9 @@ A monorepo containing microservices for the Auto-Lore platform.
 
 Each service has its own GitHub Actions workflow so that changes to one service do not trigger the other's pipeline.
 
+## CI status
+GitHub Actions workflows are used to validate Memory-Service and Logic-Service changes before merge.
+
 ### Memory-Service CI
 
 **Workflow:** `.github/workflows/memory-service-ci.yml`
