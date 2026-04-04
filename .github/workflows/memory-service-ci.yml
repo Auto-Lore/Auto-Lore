@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
       - "Memory-Service/**"
+      - ".github/workflows/memory-service-ci.yml"
   push:
     branches: [ main ]
     paths:
       - "Memory-Service/**"
+      - ".github/workflows/memory-service-ci.yml"
 
 jobs:
   build-and-test:
@@ -21,6 +23,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: Memory-Service/requirements.txt
 
       - name: Install dependencies
         working-directory: Memory-Service
@@ -36,4 +40,4 @@ jobs:
       - name: Run tests
         working-directory: Memory-Service
         run: |
-          python -m pytest tests/ -v --cov=. --cov-report=term-missing
+          python -m pytest tests/ -v --cov=. --cov-report=term-missing --cov-fail-under=80
