@@ -1,0 +1,36 @@
+name: DORA Metrics
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 9 * * 1"
+
+jobs:
+  lead-time:
+    runs-on: ubuntu-latest
+
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Calculate DORA lead time for changes
+        id: lead-time
+        uses: DeveloperMetrics/lead-time-for-changes@main
+        with:
+          workflows: "Memory-Service CI,Logic-Service CI"
+          owner-repo: "${{ github.repository }}"
+          default-branch: "main"
+          number-of-days: 30
+          commit-counting-method: "last"
+          actions-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Upload DORA lead time report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dora-lead-time-report
+          path: ${{ steps.lead-time.outputs.markdown-file }}
