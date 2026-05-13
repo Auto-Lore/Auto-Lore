@@ -3,36 +3,73 @@
 [![Logic-Service CI](https://github.com/KGvozden/Auto-Lore/actions/workflows/logic-service-ci.yml/badge.svg)](https://github.com/KGvozden/Auto-Lore/actions/workflows/logic-service-ci.yml)
 [![Memory-Service CI](https://github.com/KGvozden/Auto-Lore/actions/workflows/memory-service-ci.yml/badge.svg)](https://github.com/KGvozden/Auto-Lore/actions/workflows/memory-service-ci.yml)
 
-A monorepo containing microservices for the Auto-Lore platform.
+Auto-Lore is a backend platform for AI-driven NPC interactions in a fantasy game. It handles NPC memory (what an NPC remembers about a player across sessions) and chat (generating in-character replies via a local LLM). A MAUI game client connects to these services over HTTP.
+
+## Project structure
+
+```
+Auto-Lore/
+├── Memory-Service/     # NPC memory storage and LLM chat (FastAPI, MongoDB, Ollama)
+├── Logic-Service/      # Game logic service (FastAPI — skeleton, in progress)
+└── .github/workflows/  # CI pipelines (one per service)
+```
 
 ## Services
 
-| Service | Port | Description |
-|---------|------|-------------|
-| Memory-Service | 8000 | Handles memory storage and retrieval |
-| Logic-Service | 8001 | Handles logic and processing |
+| Service | Port | Status | Description |
+|---------|------|--------|-------------|
+| Memory-Service | 8000 | Active | Stores NPC memories in MongoDB; generates chat replies via Ollama |
+| Logic-Service  | 8001 | Skeleton | Placeholder for future game logic endpoints |
 
-## CI/CD Pipelines
+## Memory-Service
 
-Each service has its own GitHub Actions workflow so that changes to one service do not trigger the other's pipeline.
+Provides two groups of endpoints:
 
-## CI status
-GitHub Actions workflows are used to validate Memory-Service and Logic-Service changes before merge.
+- **`/memories`** — CRUD for NPC memory records. Each record stores what an NPC remembers about a player: event type, description, tags, and the conversation transcript.
+- **`/chat`** — Sends a conversation transcript to a local Ollama model and returns an in-character NPC reply. Memories from past sessions are injected into the system prompt automatically.
 
-### Memory-Service CI
+NPC personas are defined in `Memory-Service/app/routers/chat.py`. The default model is `llama3.2:3b` and can be overridden with the `OLLAMA_MODEL` environment variable.
 
-**Workflow:** `.github/workflows/memory-service-ci.yml`
+## Running locally
 
-- **Triggers:** push to `main` or pull request — only when files in `Memory-Service/` change
-- **Runs on:** `ubuntu-latest` with Python 3.11
-- **Steps:** install dependencies → flake8 lint → pytest
+**Prerequisites:** Python 3.11+, MongoDB running on `localhost:27017`, Ollama running with your chosen model pulled.
 
-### Logic-Service CI
+```bash
+# Memory-Service
+cd Memory-Service
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
 
-**Workflow:** `.github/workflows/logic-service-ci.yml`
+# Logic-Service (separate terminal)
+cd Logic-Service
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8001
+```
 
-- **Triggers:** push to `main` or pull request — only when files in `Logic-Service/` or the workflow file itself change
-- **Runs on:** `ubuntu-latest` with Python 3.11
-- **Steps:** install dependencies → flake8 lint → pytest
+Environment variables (optional — defaults work for local dev):
 
-Both pipelines follow the same pattern: checkout → setup Python → install from `requirements.txt` → lint → test.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MONGO_URI` | `mongodb://localhost:27017` | MongoDB connection string |
+| `DB_NAME` | `autolore` | MongoDB database name |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Ollama model to use for chat |
+
+## Running tests
+
+```bash
+# From each service directory
+cd Memory-Service
+pytest tests/ -v --cov=. --cov-report=term-missing
+
+cd Logic-Service
+pytest tests/ -v
+```
+
+## CI/CD
+
+Each service has its own GitHub Actions workflow that triggers only when files in that service change. Both pipelines run on Python 3.11 and follow the same steps: install dependencies → flake8 lint → pytest. Memory-Service additionally enforces 80% test coverage.
+
+| Workflow | File |
+|----------|------|
+| Logic-Service CI | `.github/workflows/logic-service-ci.yml` |
+| Memory-Service CI | `.github/workflows/memory-service-ci.yml` |

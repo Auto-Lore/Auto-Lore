@@ -14,6 +14,7 @@ env/
 .pytest_cache/
 .coverage
 htmlcov/
+.mypy_cache/
 
 # IDEs
 .vscode/
@@ -28,5 +29,5 @@ Thumbs.db
 # Environment variables
 .env
 
-# Node (Dashboard)
+# Node
 node_modules/
