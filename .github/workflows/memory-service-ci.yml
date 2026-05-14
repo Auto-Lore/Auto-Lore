@@ -32,6 +32,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Scan dependencies for known vulnerabilities
+        working-directory: Memory-Service
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
+
       - name: Lint with flake8
         working-directory: Memory-Service
         run: |
