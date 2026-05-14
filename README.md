@@ -1,38 +1,37 @@
 # Auto-Lore
 
-[![Logic-Service CI](https://github.com/KGvozden/Auto-Lore/actions/workflows/logic-service-ci.yml/badge.svg)](https://github.com/KGvozden/Auto-Lore/actions/workflows/logic-service-ci.yml)
 [![Memory-Service CI](https://github.com/KGvozden/Auto-Lore/actions/workflows/memory-service-ci.yml/badge.svg)](https://github.com/KGvozden/Auto-Lore/actions/workflows/memory-service-ci.yml)
+[![Logic-Service CI](https://github.com/KGvozden/Auto-Lore/actions/workflows/logic-service-ci.yml/badge.svg)](https://github.com/KGvozden/Auto-Lore/actions/workflows/logic-service-ci.yml)
+[![Memory-Service Docker](https://github.com/KGvozden/Auto-Lore/actions/workflows/memory-service-docker.yml/badge.svg)](https://github.com/KGvozden/Auto-Lore/actions/workflows/memory-service-docker.yml)
 
-Auto-Lore is a backend platform for AI-driven NPC interactions in a fantasy game. It handles NPC memory (what an NPC remembers about a player across sessions) and chat (generating in-character replies via a local LLM). A MAUI game client connects to these services over HTTP.
+Auto-Lore is a backend platform for AI-driven NPC interactions in a fantasy game. It handles NPC memory (what an NPC remembers about a player across sessions) and generates in-character chat replies via a local LLM. A MAUI game client connects to these services over HTTP.
 
 ## Project structure
 
 ```
 Auto-Lore/
 ├── Memory-Service/     # NPC memory storage and LLM chat (FastAPI, MongoDB, Ollama)
-├── Logic-Service/      # Game logic service (FastAPI — skeleton, in progress)
-└── .github/workflows/  # CI pipelines (one per service)
+├── Logic-Service/      # Game logic service (FastAPI — skeleton, extension boundary)
+└── .github/workflows/  # CI/CD pipelines (per-service, path-filtered)
 ```
 
 ## Services
 
 | Service | Port | Status | Description |
-|---------|------|--------|-------------|
+|---|---|---|---|
 | Memory-Service | 8000 | Active | Stores NPC memories in MongoDB; generates chat replies via Ollama |
-| Logic-Service  | 8001 | Skeleton | Placeholder for future game logic endpoints |
+| Logic-Service | 8001 | Skeleton | Extension boundary for future NPC reasoning and game logic |
 
-## Memory-Service
+## Memory-Service endpoints
 
-Provides two groups of endpoints:
-
-- **`/memories`** — CRUD for NPC memory records. Each record stores what an NPC remembers about a player: event type, description, tags, and the conversation transcript.
-- **`/chat`** — Sends a conversation transcript to a local Ollama model and returns an in-character NPC reply. Memories from past sessions are injected into the system prompt automatically.
+- **`/memories`** — CRUD for NPC memory records. Each record stores what an NPC remembers about a player: event type, description, tags, and timestamp.
+- **`/chat`** — Accepts a conversation transcript, injects relevant past memories into the system prompt, and returns an in-character NPC reply from a local Ollama model.
 
 NPC personas are defined in `Memory-Service/app/routers/chat.py`. The default model is `llama3.2:3b` and can be overridden with the `OLLAMA_MODEL` environment variable.
 
 ## Running locally
 
-**Prerequisites:** Python 3.11+, MongoDB running on `localhost:27017`, Ollama running with your chosen model pulled.
+**Prerequisites:** Python 3.11+, MongoDB on `localhost:27017`, Ollama running with your chosen model pulled.
 
 ```bash
 # Memory-Service
@@ -46,30 +45,47 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload --port 8001
 ```
 
-Environment variables (optional — defaults work for local dev):
-
 | Variable | Default | Description |
-|----------|---------|-------------|
+|---|---|---|
 | `MONGO_URI` | `mongodb://localhost:27017` | MongoDB connection string |
 | `DB_NAME` | `autolore` | MongoDB database name |
-| `OLLAMA_MODEL` | `llama3.2:3b` | Ollama model to use for chat |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Ollama model for chat generation |
 
 ## Running tests
 
 ```bash
-# From each service directory
 cd Memory-Service
-pytest tests/ -v --cov=. --cov-report=term-missing
+python -m pytest tests/ -v --cov=. --cov-report=term-missing --cov-fail-under=80
 
 cd Logic-Service
-pytest tests/ -v
+python -m pytest tests/ -v
 ```
 
-## CI/CD
+## Docker
 
-Each service has its own GitHub Actions workflow that triggers only when files in that service change. Both pipelines run on Python 3.11 and follow the same steps: install dependencies → flake8 lint → pytest. Memory-Service additionally enforces 80% test coverage.
+Memory-Service is containerised and published to GitHub Container Registry on every merge to `main`.
 
-| Workflow | File |
-|----------|------|
-| Logic-Service CI | `.github/workflows/logic-service-ci.yml` |
-| Memory-Service CI | `.github/workflows/memory-service-ci.yml` |
+```bash
+# Pull the latest image
+docker pull ghcr.io/kgvozden/auto-lore-memory-service:latest
+
+# Run with local MongoDB and Ollama
+docker run -p 8000:8000 \
+  -e MONGO_URI=mongodb://host.docker.internal:27017 \
+  -e OLLAMA_MODEL=llama3.2:3b \
+  ghcr.io/kgvozden/auto-lore-memory-service:latest
+```
+
+Images are tagged with `latest` (most recent main build) and `sha-<commit>` for full traceability. Pull requests build the image without pushing to validate the Dockerfile.
+
+## CI/CD pipelines
+
+Each workflow is path-filtered — it only runs when files in that service change.
+
+| Workflow | Trigger | Steps |
+|---|---|---|
+| Memory-Service CI | push/PR → `Memory-Service/` | install → pip-audit → flake8 → pytest + 80% coverage |
+| Logic-Service CI | push/PR → `Logic-Service/` | install → flake8 → pytest |
+| Memory-Service Docker | push/PR → `Memory-Service/` | build image (PR) / build + push to GHCR (main) |
+| Multi-Environment Delivery | manual (`workflow_dispatch`) | deploy-development → deploy-staging → deploy-production |
+| DORA Metrics | Monday 09:00 UTC + manual | lead-time-for-changes report across CI workflows |
