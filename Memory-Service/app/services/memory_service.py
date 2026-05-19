@@ -56,6 +56,29 @@ def update_memory(memory_id: str, data: MemoryUpdate) -> Optional[MemoryOut]:
     return MemoryOut.model_validate(doc) if doc else None
 
 
+def upsert_memory(memory_id: str, data: MemoryUpdate) -> Optional[dict]:
+    """Update if exists (200) or create with provided fields (201)."""
+    oid = _to_object_id(memory_id)
+    if oid is None:
+        return None
+
+    existing = memories_collection.find_one({"_id": oid})
+
+    updates = {k: v for k, v in data.model_dump().items() if v is not None}
+
+    if existing:
+        if updates:
+            memories_collection.update_one({"_id": oid}, {"$set": updates})
+        doc = memories_collection.find_one({"_id": oid})
+        return {"memory": MemoryOut.model_validate(doc), "created": False}
+    else:
+        from datetime import datetime, timezone
+        new_doc = {"_id": oid, "npc_id": "unknown", "timestamp": datetime.now(timezone.utc), **updates}
+        memories_collection.insert_one(new_doc)
+        doc = memories_collection.find_one({"_id": oid})
+        return {"memory": MemoryOut.model_validate(doc), "created": True}
+
+
 def delete_memory(memory_id: str) -> bool:
     oid = _to_object_id(memory_id)
     if oid is None:

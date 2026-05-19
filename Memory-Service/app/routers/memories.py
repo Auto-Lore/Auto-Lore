@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
 from app.models.memory_models import MemoryCreate, MemoryOut, MemoryUpdate
 from app.services import memory_service
@@ -23,12 +23,14 @@ def get_memories(
     return memory_service.get_memories(npc_id, player_id, event_type, tag)
 
 
-@router.put("/{memory_id}", response_model=MemoryOut)
-def update_memory(memory_id: str, memory: MemoryUpdate):
-    updated = memory_service.update_memory(memory_id, memory)
-    if updated is None:
-        raise HTTPException(status_code=404, detail="Memory not found")
-    return updated
+@router.put("/{memory_id}", response_model=MemoryOut, status_code=200)
+def update_memory(memory_id: str, memory: MemoryUpdate, response: Response):
+    result = memory_service.upsert_memory(memory_id, memory)
+    if result is None:
+        raise HTTPException(status_code=400, detail="Invalid memory ID")
+    if result["created"]:
+        response.status_code = 201
+    return result["memory"]
 
 
 @router.delete("/{memory_id}", status_code=204)
