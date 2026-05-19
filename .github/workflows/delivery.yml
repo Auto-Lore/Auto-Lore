@@ -1,0 +1,61 @@
+name: Multi-Environment Delivery
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-development:
+    name: Deploy — Development
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Simulate deployment
+        run: |
+          echo "=== Auto-Lore Deployment ==="
+          echo "Environment : development"
+          echo "Branch      : ${{ github.ref_name }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Commit      : ${{ github.sha }}"
+          echo "Status      : deployed"
+
+  deploy-staging:
+    name: Deploy — Staging
+    runs-on: ubuntu-latest
+    needs: deploy-development
+    environment: staging
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Simulate deployment
+        run: |
+          echo "=== Auto-Lore Deployment ==="
+          echo "Environment : staging"
+          echo "Branch      : ${{ github.ref_name }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Commit      : ${{ github.sha }}"
+          echo "Status      : deployed"
+
+  deploy-production:
+    name: Deploy — Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Simulate deployment
+        run: |
+          echo "=== Auto-Lore Deployment ==="
+          echo "Environment : production"
+          echo "Branch      : ${{ github.ref_name }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Commit      : ${{ github.sha }}"
+          echo "Status      : deployed"
